@@ -21,3 +21,4 @@ docker run -d --name my-app-container my-app
 docker logs my-app-container
 
 Если после enter ничего не выводит - все работает!
+я шестак бебебе
