@@ -7,6 +7,8 @@
 7. Когда напишет root@цифры, значит все хорошо
 8. Вводишь следующие команды по очереди
 
+кекекек
+
 git pull
 docker rm my-app-container
 docker build -t my-app .
