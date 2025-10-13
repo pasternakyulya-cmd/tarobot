@@ -10,4 +10,4 @@ WORKDIR /app
 COPY . .
 
 # Команда запуска
-CMD ["python", "app/bot.py"]
+CMD ["python", "bot.py"]
