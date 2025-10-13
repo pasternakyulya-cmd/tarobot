@@ -9,7 +9,9 @@
 
 кекекек
 
+cd tarobot
 git pull
+docker stop my-app-container
 docker rm my-app-container
 docker build -t my-app .
 docker run -d --name my-app-container my-app
