@@ -537,7 +537,6 @@ def get_mini_remaining(uid: str):
 
 
 
-
 # ===== МИНИ-ОКНА / "АНИМАЦИЯ" =====
 async def ritual_4s(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -2090,7 +2089,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Нажми на кнопки ниже 👇", reply_markup=reply_keyboard())
 # ================== УТРЕННЯЯ РАССЫЛКА ==================
 MORNING_TEXT = (
-    "🌅 Доброе утро! Твоё предсказание уже готово.\n"
+    "Привет! Твоё предсказание уже готово.\n"
     "Нажми «🔮 Карта дня» ✨"
 )
 
