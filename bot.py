@@ -2089,8 +2089,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Нажми на кнопки ниже 👇", reply_markup=reply_keyboard())
 # ================== УТРЕННЯЯ РАССЫЛКА ==================
 MORNING_TEXT = (
-    "Привет! Твоё предсказание уже готово.\n"
-    "Нажми «🔮 Карта дня» ✨"
+    "🌙 Судьба приготовила послание.\n" \
+    "Нажми «🔮 Карта дня» и узнай, что ждёт тебя сегодня ✨"
 )
 
 
