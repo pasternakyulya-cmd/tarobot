@@ -600,27 +600,33 @@ async def safe_send(bot, chat_id: int, text: str, **kwargs):
 async def periodic_share_broadcast(context):
     """Рассылка всем пользователям каждые 16 дней"""
     users = load_users()
+    print(f"[JOB] share_broadcast: start, users={len(users)}")
+
     if not users:
-        print("[INFO] Нет пользователей для рассылки.")
+        print("[JOB] share_broadcast: нет пользователей — выходим")
         return
 
     to_remove = []
     uids = [int(u) for u in users]
 
-    for uid in uids:
+    for idx, uid in enumerate(uids, start=1):
         try:
             await safe_send(context.bot, uid, SHARE_TEXT, reply_markup=reply_keyboard())
+            if idx % 25 == 0:
+                print(f"[JOB] share_broadcast: sent {idx}/{len(uids)}")
             await asyncio.sleep(0.2)
         except Forbidden:
             to_remove.append(str(uid))
         except Exception as e:
-            print(f"[!] Ошибка при отправке {uid}: {e}")
+            print(f"[JOB][!] ошибка при отправке {uid}: {e}")
 
-    # удаляем тех, кто заблокировал бота
     if to_remove:
+        print(f"[JOB] share_broadcast: remove {len(to_remove)} unsubscribed")
         for u in to_remove:
             users.discard(u)
         save_users(users)
+
+    print("[JOB] share_broadcast: done")
 
 
 
@@ -3075,15 +3081,15 @@ def main():
         time=time(7, 30),
         days=(0, 1, 2, 3, 4, 5, 6),
     )
-    from datetime import datetime, timedelta
+    from datetime import timedelta
 
-    # 📅 Рассылка каждые 16 дней, начиная с текущего момента
-    first_run = datetime.now() + timedelta(seconds=5)  # через 5 сек после запуска
+    # Первая отправка через 5 секунд после старта, дальше — каждые 16 дней в то же время
     jq.run_repeating(
         periodic_share_broadcast,
         interval=timedelta(days=16),
-        first=first_run,
+        first=timedelta(seconds=5),
         name="share_broadcast_16d"
+
     )
 
     app.run_polling()
