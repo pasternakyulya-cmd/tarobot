@@ -36,6 +36,43 @@ def save_birthdays(data: dict):
     with open(BIRTHDAYS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
+# ===== СПИСОК ПОЛЬЗОВАТЕЛЕЙ (для рассылки) =====
+USERS_FILE = "users.json"
+
+def load_users() -> set[str]:
+    """Загружает всех пользователей из файла users.json"""
+    if os.path.exists(USERS_FILE):
+        try:
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                # поддерживаем старый формат: список → set[str]
+                if isinstance(data, list):
+                    return set(map(str, data))
+                elif isinstance(data, dict):
+                    return set(map(str, data.keys()))
+                elif isinstance(data, set):
+                    return set(map(str, data))
+                else:
+                    return set()
+        except Exception:
+            return set()
+    return set()
+
+def save_users(users: set[str]):
+    """Сохраняет всех пользователей в файл users.json"""
+    try:
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(sorted(list(users)), f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[!] Ошибка сохранения users.json: {e}")
+
+def add_user(uid: str):
+    """Добавляет нового пользователя в базу (если его ещё нет)"""
+    users = load_users()
+    if uid not in users:
+        users.add(uid)
+        save_users(users)
+
 
 # 💞 Совместимость — 1 раз в день (день меняется в 06:00 МСК)
 import random  # если уже импортирован вверху — можешь не вставлять второй раз
@@ -534,6 +571,56 @@ def get_mini_remaining(uid: str):
     return left if left.total_seconds() > 0 else None
 
 
+# ===== Периодическая рассылка (каждые 16 дней) =====
+SHARE_TEXT = (
+    "Привет 🌿\n"
+    "Спасибо, что ты с нами — именно благодаря тебе этот проект живёт и растёт 💫\n\n"
+    "Если тебе откликнулся сегодняшний расклад, поделись им с другом или подругой.\n\n"
+    "Пусть кто-то ещё сегодня получит свой знак, а магия распространится дальше 🔮"
+)
+
+import asyncio
+from telegram.error import Forbidden
+
+# Лимитер, чтобы не превысить лимиты Telegram
+SEND_SEMAPHORE = asyncio.Semaphore(25)
+
+async def safe_send(bot, chat_id: int, text: str, **kwargs):
+    """Безопасная отправка с паузами и ретраями"""
+    for attempt in range(3):
+        try:
+            async with SEND_SEMAPHORE:
+                return await bot.send_message(chat_id=chat_id, text=text, **kwargs)
+        except Forbidden:
+            raise
+        except Exception:
+            await asyncio.sleep(0.3 * (attempt + 1))
+    raise
+
+async def periodic_share_broadcast(context):
+    """Рассылка всем пользователям каждые 16 дней"""
+    users = load_users()
+    if not users:
+        print("[INFO] Нет пользователей для рассылки.")
+        return
+
+    to_remove = []
+    uids = [int(u) for u in users]
+
+    for uid in uids:
+        try:
+            await safe_send(context.bot, uid, SHARE_TEXT, reply_markup=reply_keyboard())
+            await asyncio.sleep(0.2)
+        except Forbidden:
+            to_remove.append(str(uid))
+        except Exception as e:
+            print(f"[!] Ошибка при отправке {uid}: {e}")
+
+    # удаляем тех, кто заблокировал бота
+    if to_remove:
+        for u in to_remove:
+            users.discard(u)
+        save_users(users)
 
 
 
@@ -2987,6 +3074,16 @@ def main():
         birthday_broadcast,
         time=time(7, 30),
         days=(0, 1, 2, 3, 4, 5, 6),
+    )
+    from datetime import datetime, timedelta
+
+    # 📅 Рассылка каждые 16 дней, начиная с текущего момента
+    first_run = datetime.now() + timedelta(seconds=5)  # через 5 сек после запуска
+    jq.run_repeating(
+        periodic_share_broadcast,
+        interval=timedelta(days=16),
+        first=first_run,
+        name="share_broadcast_16d"
     )
 
     app.run_polling()
