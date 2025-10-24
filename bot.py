@@ -3083,14 +3083,7 @@ def main():
     )
     from datetime import timedelta
 
-    # Первая отправка через 5 секунд после старта, дальше — каждые 16 дней в то же время
-    jq.run_repeating(
-        periodic_share_broadcast,
-        interval=timedelta(days=16),
-        first=timedelta(seconds=5),
-        name="share_broadcast_16d"
 
-    )
 
     app.run_polling()
 
