@@ -2716,24 +2716,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    from telegram import Bot
-    import json
-
-    # файл с ID пользователей (например, users.json)
-    USERS_FILE = "users.json"
-
-    def send_compat_to_all():
-        bot = Bot(token="ТОКЕН_ТВОЕГО_БОТА")
-
-        with open(USERS_FILE, "r", encoding="utf-8") as f:
-            users = json.load(f)
-
-        for user_id in users:
-            try:
-                bot.send_message(chat_id=user_id, text=COMPAT_TEXT)
-                print(f"✅ Отправлено пользователю {user_id}")
-            except Exception as e:
-                print(f"⚠️ Ошибка при отправке {user_id}: {e}")
 
     # Подготовка
     text = (update.message.text or "")
@@ -3024,10 +3006,6 @@ MORNING_TEXT = (
     "🔮 Твоя карта дня уже готова.\n"
     "Жми и узнавай, что ждёт тебя сегодня ✨"
 )
-COMPAT_TEXT = (
-    "🌙 Что-то в ваших энергиях изменилось...\n"
-    "Пора открыть расклад совместимости 🔮"
-)
 
 
 
@@ -3110,8 +3088,6 @@ def main():
 
     app.run_polling()
 
-if __name__ == "__main__":
-    send_compat_to_all()
 
 if __name__ == "__main__":
     main()
