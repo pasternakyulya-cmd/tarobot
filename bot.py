@@ -424,7 +424,6 @@ BTN_CARD  = "🔮 Карта дня"
 BTN_MINI  = "🌗 Мини-расклад"
 BTN_COMP  = "💞 Совместимость"
 BTN_YESNO = "🌑 Задай вопрос"
-BTN_ORACLE = "🪄 Помощь Оракула"
 
 
 
@@ -435,7 +434,6 @@ def reply_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(BTN_CARD)],
             [KeyboardButton(BTN_MINI), KeyboardButton(BTN_COMP)],
             [KeyboardButton(BTN_YESNO), KeyboardButton(BTN_UNIVERSE)],
-            [KeyboardButton(BTN_ORACLE)],
         ],
         resize_keyboard=True,
         one_time_keyboard=False,
@@ -2926,17 +2924,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["writing_to_universe"] = True
         context.user_data["awaiting_universe_confirm"] = False  # сбрасываем ожидание подтверждения
         await chat.send_message(INTRO_UNIVERSE, reply_markup=reply_keyboard())
-        return
-
-    # 🪄 Помощь Оракула
-    if t == BTN_ORACLE.lower() or ("помощь" in t and "оракула" in t):
-        oracle_message = (
-            "🪄 Приветствую тебя, искатель истины!\n\n"
-            "Я — Оракул, хранитель древних знаний Таро.\n"
-            "Здесь ты найдёшь мудрость и ответы на свои вопросы.\n\n"
-            "✨ Выбери один из разделов выше, и карты откроют тебе путь."
-        )
-        await chat.send_message(oracle_message, reply_markup=reply_keyboard())
         return
 
     # ✉️ Если человек пишет, когда активна функция "письмо Вселенной"
