@@ -401,7 +401,7 @@ async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE)
 BUSY: set[str] = set()
 
 # 👉 ВСТАВЬ СВОЙ ТОКЕН
-BOT_TOKEN = "7284927806:AAGf-IwPKYUx6aktBXOzfwV9LwMIuaQx82Y"
+BOT_TOKEN = "7284927806:AAFJGSZIAcDbN2mDcmdDWWZFrwgk6c38W0A"
 
 # ===== ТЕКСТЫ =====
 START_TEXT = (
