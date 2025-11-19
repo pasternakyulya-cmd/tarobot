@@ -16,9 +16,17 @@ from text_data.cards import CARDS
 from text_data.spreads import SPREADS
 
 load_dotenv()
+
 # Конфигурация ЮКассы
 Configuration.account_id = os.getenv('YOOKASSA_SHOP_ID')
 Configuration.secret_key = os.getenv('YOOKASSA_SECRET_KEY')
+
+# 👉 ВСТАВЬ СВОЙ ТОКЕН
+BOT_TOKEN_TEST = os.getenv('BOT_TOKEN_TEST')
+BOT_TOKEN_PROD = os.getenv('BOT_TOKEN_PROD')
+
+BOT_URL_TEST = os.getenv('BOT_URL_TEST')
+BOT_URL_PROD = os.getenv('BOT_URL_PROD')
 
 BIRTHDAYS_FILE = "birthdays.json"
 
@@ -152,9 +160,6 @@ async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # Не даём запускать несколько "ритуалов" одновременно для одного пользователя
 BUSY: set[str] = set()
-
-# 👉 ВСТАВЬ СВОЙ ТОКЕН
-BOT_TOKEN = "8557058176:AAEe8IBvoda65WzoqVZ6ueHkUGEelmMTrLk"
 
 # ===== ТЕКСТЫ =====
 START_TEXT = (
@@ -895,7 +900,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": f"https://t.me/TESTIMMSS_BOT"
+                "return_url": BOT_URL_TEST
             },
             "capture": True,
             "description": "Разбор вопроса Оракулом (1 обращение)",
@@ -913,7 +918,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": f"https://t.me/TESTIMMSS_BOT"
+                "return_url": BOT_URL_TEST
             },
             "capture": True,
             "description": "Пакет 6 обращений к Оракулу",
@@ -1101,7 +1106,7 @@ async def birthday_broadcast(context: ContextTypes.DEFAULT_TYPE):
 
 # ================== MAIN ==================
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+    app = ApplicationBuilder().token(BOT_TOKEN_TEST).build()
 
     # Хендлеры
     app.add_handler(CommandHandler("start", start))
