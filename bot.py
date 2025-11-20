@@ -3146,7 +3146,7 @@ def main():
         print("🔴 Бот остановлен")
 
 if __name__ == "__main__":
-    import time
+    from datetime import time, timedelta
 
     while True:
         try:
