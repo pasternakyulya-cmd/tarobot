@@ -847,7 +847,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Оракул услышал твой вопрос.\n\n"
             "Чтобы получить действительно точный, глубокий и индивидуальный разбор, нужен энергообмен. "
             "Это не формальность — благодаря ему Оракул может сосредоточиться на твоей ситуации и разобрать её максимально внимательно.\n\n"
-            "✨ Стоимость одного обращения — 100 рублей.\n"
+            "✨ Стоимость одного обращения — 25 рублей.\n"
             "✨ Сразу взять пакет из 6 обращений — 130 рублей.\n\n"
             "Это небольшая сумма за ответ, который может дать ясность, подсказать верное действие, предупредить ошибку "
             "и помочь увидеть то, что сейчас кажется туманным.\n\n"
@@ -861,9 +861,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.message.from_user.id
 
         # Генерируем платежные ссылки с UUID для каждого варианта
-        payment_100 = Payment.create({
+        payment_25 = Payment.create({
             "amount": {
-                "value": "100.00",
+                "value": "25.00",
                 "currency": "RUB"
             },
             "confirmation": {
@@ -899,7 +899,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = [
             [
-                InlineKeyboardButton("🔮 Оплатить 100₽", url=payment_25.confirmation.confirmation_url),
+                InlineKeyboardButton("🔮 Оплатить 25 ₽", url=payment_25.confirmation.confirmation_url),
             ]
             # [
             #     InlineKeyboardButton("🔮 Пакет 6 обращений — 130 ₽", url=payment_130.confirmation.confirmation_url),
@@ -909,7 +909,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         print(f"🔄 Отправляю сообщение с кнопками-ссылками:")
-        print(f"   Кнопка 100 руб: {payment_25.confirmation.confirmation_url}")
+        print(f"   Кнопка 25 руб: {payment_25.confirmation.confirmation_url}")
         print(f"   Кнопка 130 руб: {payment_130.confirmation.confirmation_url}")
 
         sent_message = await update.message.reply_text(payment_msg, reply_markup=reply_markup)
