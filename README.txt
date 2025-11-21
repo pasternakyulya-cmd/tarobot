@@ -15,7 +15,7 @@ git pull
 docker stop my-app-container
 docker rm my-app-container
 docker build -t my-app .
-docker run -d --name my-app-container my-app
+docker run -p 5000:5000 -d --name my-app-container my-app
 
 9. Чтобы проверить, что ошибок нет, вводишь
 

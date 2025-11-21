@@ -3,11 +3,9 @@ import os
 import threading
 import time
 import traceback
-from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
-from telegram.constants import ChatAction
 from telegram.error import BadRequest, TimedOut
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
@@ -15,10 +13,10 @@ from telegram.ext import (
 )
 from yookassa import Configuration, Payment
 
-from payment.webhook_handler import app
-
+from payment.webhook_handler import flask_app
 from text_data.cards import CARDS
 from text_data.spreads import SPREADS
+from rituals import ritual_4s
 
 load_dotenv()
 
@@ -33,16 +31,9 @@ BOT_TOKEN_PROD = os.getenv('BOT_TOKEN_PROD')
 BOT_URL_TEST = os.getenv('BOT_URL_TEST')
 BOT_URL_PROD = os.getenv('BOT_URL_PROD')
 
+ADMIN_TG_ID = os.getenv('ADMIN_TG_ID')  # подставь свой id
+
 BIRTHDAYS_FILE = "birthdays.json"
-
-
-# Запускаем вебхук-сервер в фоне
-def run_webhook_server():
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
-
-webhook_thread = threading.Thread(target=run_webhook_server, daemon=True)
-webhook_thread.start()
-print("🌐 Вебхук-сервер запущен в фоне")
 
 def load_birthdays():
     if os.path.exists(BIRTHDAYS_FILE):
@@ -183,6 +174,7 @@ START_TEXT = (
     "🌗 «Мини-расклад» — краткий трёхкартный совет судьбы.\n"
     "💞 «Совместимость» — покажет, как переплетаются ваши энергии.\n"
     "🌑 «Задай вопрос» — получи ответ «да» или «нет» от самих карт.\n"
+    "🕯 «Оракул» — личный глубокий разбор твоего вопроса, основанный на древней системе знаний.\n"
     "🌙 «Написать Вселенной» — расскажи пространству, что в тебе откликается. Иногда ответ приходит в виде знака.\n\n"
     "Погрузись… и позволь магии карт направить тебя 🌌"
 )
@@ -196,6 +188,7 @@ BTN_CARD  = "🔮 Карта дня"
 BTN_MINI  = "🌗 Мини-расклад"
 BTN_COMP  = "💞 Совместимость"
 BTN_YESNO = "🌑 Задай вопрос"
+BTN_ORACLE = "🪄 Помощь Оракула"
 
 def reply_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
@@ -203,6 +196,7 @@ def reply_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(BTN_CARD)],
             [KeyboardButton(BTN_MINI), KeyboardButton(BTN_COMP)],
             [KeyboardButton(BTN_YESNO), KeyboardButton(BTN_UNIVERSE)],
+            [KeyboardButton(BTN_ORACLE)]
         ],
         resize_keyboard=True,
         one_time_keyboard=False,
@@ -252,8 +246,6 @@ def load_daily_map() -> dict:
 def save_daily_map(data: dict):
     with open(DAILY_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-
-from datetime import time
 
 
 def get_or_assign_today_card_index(uid: str):
@@ -397,42 +389,6 @@ async def periodic_share_broadcast(context):
 
     print("[JOB] share_broadcast: done")
 
-
-
-# ===== МИНИ-ОКНА / "АНИМАЦИЯ" =====
-async def ritual_4s(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    4 секунды «ритуала» одним сообщением (без клавиатуры при редактировании).
-    Никакого спама — только одно сообщение, которое правим 3 раза.
-    """
-    chat = update.effective_chat
-
-    # 1) отправляем первое сообщение
-    await chat.send_action(ChatAction.TYPING)
-    msg = await update.message.reply_text("🔮 Судьба думает…")
-
-    # 2) три правки = ~4 сек суммарно
-    steps = [
-        ("🪄 Перетасовываем колоду…", 1.3),
-        ("👁️ Связываемся с духами…", 1.3),
-        ("✨ Читаем знаки…",         1.3),
-    ]
-    for text, delay in steps:
-        await asyncio.sleep(delay)
-        await chat.send_action(ChatAction.TYPING)
-        try:
-            # ВАЖНО: без reply_markup — Telegram не разрешает его в edit_message_text для reply-клавы
-            await msg.edit_text(text)
-        except Exception:
-            pass  # тихо игнорируем, продолжаем
-
-    await asyncio.sleep(0.1)  # итого ≈4.0 c
-    return msg
-
-
-
-
-
 # ===== HANDLERS =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # проверяем подписку
@@ -506,7 +462,7 @@ UNIVERSE_WAITING = [
 from zoneinfo import ZoneInfo
 
 # 🌗 Мини-расклад — логика выдачи (1 раз в 6 часов)
-from datetime import datetime, timedelta
+from datetime import datetime
 import random
 
 def get_or_assign_mini_spread(uid: str):
@@ -680,7 +636,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         BUSY.add(uid)
         try:
-            progress_msg = await ritual_4s(update, context)
+            progress_msg = await ritual_4s(update)
             already, idx = get_or_assign_today_card_index(uid)
             card = CARDS[idx]
 
@@ -729,7 +685,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return
 
             # иначе — выполняем сам расклад
-            progress_msg = await ritual_4s(update, context)
+            progress_msg = await ritual_4s(update)
             already, spread_text = get_or_assign_mini_spread(uid)
 
             if already:
@@ -786,7 +742,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         progress_msg = None
         try:
             # мини-ритуал (можно убрать, если не нужен)
-            progress_msg = await ritual_4s(update, context)
+            progress_msg = await ritual_4s(update)
 
             already, comp_text = get_or_assign_daily_compat(uid)
 
@@ -833,7 +789,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         progress_msg = None
         try:
             # красивый «ритуал»
-            progress_msg = await ritual_4s(update, context)
+            progress_msg = await ritual_4s(update)
 
             ok, payload, remaining = take_yesno_draw(uid)
 
@@ -1154,13 +1110,70 @@ async def global_error_handler(update, context):
 
     print("="*50 + "\n")
 
+async def broadcast_oracle_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Однократная рассылка о новой функции «Помощь Оракула».
+    Запускается командой /oracle_help_broadcast только от админа.
+    """
+
+    users = load_users()
+    if not users:
+        await update.message.reply_text("Список пользователей пуст, рассылать некому 😅")
+        return
+
+    text = (
+        "✨ *Дорогой искатель, у нас чудесная новость! ✨*\n\n"
+        "🔮 В *BAUETT MAGIC* появилась новая возможность — «Помощь Оракула».\n\n"
+        "Теперь ты можешь получить не просто карту или краткий намёк, а настоящий "
+        "личный разбор своей ситуации — спокойный, глубокий и точный. "
+        "Оракул отвечает индивидуально, опираясь на энергию именно твоего запроса.\n\n"
+        "🕯 Оракул особенно полезен, когда:\n"
+        "• внутри тревожно и не хватает ясности;\n"
+        "• хочется понять, куда сделать следующий шаг;\n"
+        "• важно увидеть ситуацию шире, чем просто «да» или «нет»;\n"
+        "• нужен честный и мягкий взгляд со стороны мудрого наставника.\n\n"
+        "Мы очень рады наконец поделиться этой функцией — многие просили её давно, "
+        "и теперь она доступна каждому 🫶\n\n"
+        "Чтобы появилась кнопка, просто нажми /start — бот обновится и всё появится автоматически.\n\n"
+        "Задавай свой вопрос, когда почувствуешь, что готова. "
+        "Оракул рядом и уже слушает тебя 💫"
+    )
+    await update.message.reply_text(
+        f"Начинаю рассылку по {len(users)} пользователям…"
+    )
+
+    sent = 0
+    skipped = 0
+
+    for raw_uid in users:
+        try:
+            uid = int(raw_uid)
+            await context.bot.send_message(chat_id=uid, text=text, parse_mode="Markdown")
+            sent += 1
+            # маленькая пауза, чтобы не словить лимиты
+            await asyncio.sleep(0.05)
+        except Forbidden:
+            # бот заблокирован / пользователь удалён — пропускаем
+            skipped += 1
+        except (BadRequest, TimedOut) as e:
+            skipped += 1
+            # можно залогировать, если хочешь
+            print(f"Ошибка при отправке пользователю {raw_uid}: {e}")
+
+    await update.message.reply_text(
+        f"✅ Рассылка завершена.\n"
+        f"Отправлено: {sent}\n"
+        f"Пропущено: {skipped}"
+    )
+
 # ================== MAIN ==================
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN_PROD).build()
 
     # Регистрируем глобальный обработчик ошибок ПЕРВЫМ
     app.add_error_handler(global_error_handler)
-
+    # 🔹 Команда для запуска рассылки (только для ADMIN_ID)
+    app.add_handler(CommandHandler("oracle_help_broadcast", broadcast_oracle_help))
     # Хендлеры
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("resetday", resetday))  # если используешь
@@ -1186,7 +1199,17 @@ def main():
     else:
         print("Предупреждение: JobQueue не доступен. Ежедневные рассылки отключены.")
 
-    app.run_polling(allowed_updates=["message", "callback_query"])
+    def run_webhook_server():
+        try:
+            print("🌐 Запускаю вебхук-сервер на порту 5000...")
+            flask_app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+        except Exception as e:
+            print(f"❌ Ошибка вебхук-сервера: {e}")
+
+    # Запуск вебхук-сервера
+    webhook_thread = threading.Thread(target=run_webhook_server, daemon=True)
+    webhook_thread.start()
+    print("🌐 Вебхук-сервер запущен в фоне")
 
     try:
         app.run_polling(
