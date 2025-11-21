@@ -868,7 +868,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": BOT_URL_TEST
+                "return_url": BOT_URL_PROD
             },
             "capture": True,
             "description": "Разбор вопроса Оракулом (1 обращение)",
@@ -886,7 +886,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": BOT_URL_TEST
+                "return_url": BOT_URL_PROD
             },
             "capture": True,
             "description": "Пакет 6 обращений к Оракулу",
@@ -1168,7 +1168,7 @@ async def broadcast_oracle_help(update: Update, context: ContextTypes.DEFAULT_TY
 
 # ================== MAIN ==================
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN_TEST).build()
+    app = ApplicationBuilder().token(BOT_TOKEN_PROD).build()
 
     # Регистрируем глобальный обработчик ошибок ПЕРВЫМ
     app.add_error_handler(global_error_handler)
