@@ -4,10 +4,13 @@ import os
 import requests
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
+# Затем создаем фейковый update для запуска ритуала
+from telegram.constants import ChatAction
 
-app = Flask(__name__)
+flask_app = Flask(__name__)
 
 load_dotenv()
+
 # Настройки
 BOT_TOKEN = os.getenv('BOT_TOKEN_PROD')
 N8N_WEBHOOK_URL = os.getenv('N8N_WEBHOOK_URL')
@@ -34,6 +37,31 @@ def send_success_message(user_id, question, tariff):
             )
             await bot.send_message(chat_id=user_id, text=message, parse_mode='Markdown')
 
+            # Имитируем ритуал вручную
+            await bot.send_chat_action(chat_id=user_id, action=ChatAction.TYPING)
+            progress_msg = await bot.send_message(chat_id=user_id, text="🔮 Судьба думает…")
+
+            steps = [
+                ("🪄 Перетасовываем колоду…", 1.3),
+                ("👁️ Связываемся с духами…", 1.3),
+                ("✨ Читаем знаки…", 1.3),
+            ]
+
+            for text, delay in steps:
+                await asyncio.sleep(delay)
+                await bot.send_chat_action(chat_id=user_id, action=ChatAction.TYPING)
+                try:
+                    await progress_msg.edit_text(text)
+                except Exception:
+                    pass
+
+            await asyncio.sleep(0.1)
+
+            # Ответ оракула
+            oracle_response = "✨ Ваш ответ от оракула будет здесь..."
+            await progress_msg.delete()
+            await bot.send_message(chat_id=user_id, text=oracle_response)
+
         asyncio.run(async_send())
         logger.info(f"✅ Уведомление об оплате отправлено пользователю {user_id}")
     except Exception as e:
@@ -53,7 +81,7 @@ def forward_to_n8n(webhook_data):
         logger.error(f"❌ Ошибка подключения к n8n: {e}")
         return False
 
-@app.route('/webhook/yookassa', methods=['POST'])
+@flask_app.route('/webhook/yookassa', methods=['POST'])
 def handle_yookassa_webhook():
     """Обработчик вебхуков от ЮKassa"""
     try:
@@ -85,10 +113,10 @@ def handle_yookassa_webhook():
         logger.error(f"❌ Ошибка обработки вебхука: {e}")
         return jsonify({'status': 'error'}), 500
 
-@app.route('/health', methods=['GET'])
+@flask_app.route('/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'healthy'}), 200
 
 if __name__ == '__main__':
     logger.info("🌐 Вебхук-сервер запущен на порту 5000")
-    app.run(host='0.0.0.0', port=5000)
+    flask_app.run(host='0.0.0.0', port=5000)
