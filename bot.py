@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 import time
 
 from dotenv import load_dotenv
@@ -11,6 +12,8 @@ from telegram.ext import (
     ContextTypes, filters
 )
 from yookassa import Configuration, Payment
+
+from payment.webhook_handler import app
 
 from text_data.cards import CARDS
 from text_data.spreads import SPREADS
@@ -29,6 +32,15 @@ BOT_URL_TEST = os.getenv('BOT_URL_TEST')
 BOT_URL_PROD = os.getenv('BOT_URL_PROD')
 
 BIRTHDAYS_FILE = "birthdays.json"
+
+
+# Запускаем вебхук-сервер в фоне
+def run_webhook_server():
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+
+webhook_thread = threading.Thread(target=run_webhook_server, daemon=True)
+webhook_thread.start()
+print("🌐 Вебхук-сервер запущен в фоне")
 
 def load_birthdays():
     if os.path.exists(BIRTHDAYS_FILE):
@@ -456,7 +468,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def resetday(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def resetday(update: Update):
     # Для тестов: сбрасывает сегодняшние карты
     save_daily_map({})
     await update.message.reply_text("♻️ Сбросили дневные карты. Тестируй заново.", reply_markup=reply_keyboard())
@@ -900,7 +912,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": BOT_URL_TEST
+                "return_url": BOT_URL_PROD
             },
             "capture": True,
             "description": "Разбор вопроса Оракулом (1 обращение)",
@@ -918,7 +930,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             },
             "confirmation": {
                 "type": "redirect",
-                "return_url": BOT_URL_TEST
+                "return_url": BOT_URL_PROD
             },
             "capture": True,
             "description": "Пакет 6 обращений к Оракулу",
@@ -932,10 +944,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [
             [
                 InlineKeyboardButton("🔮 Оплатить 25 ₽", url=payment_25.confirmation.confirmation_url),
-            ],
-            [
-                InlineKeyboardButton("🔮 Пакет 6 обращений — 130 ₽", url=payment_130.confirmation.confirmation_url),
             ]
+            # [
+            #     InlineKeyboardButton("🔮 Пакет 6 обращений — 130 ₽", url=payment_130.confirmation.confirmation_url),
+            # ]
         ]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1106,7 +1118,7 @@ async def birthday_broadcast(context: ContextTypes.DEFAULT_TYPE):
 
 # ================== MAIN ==================
 def main():
-    app = ApplicationBuilder().token(BOT_TOKEN_TEST).build()
+    app = ApplicationBuilder().token(BOT_TOKEN_PROD).build()
 
     # Хендлеры
     app.add_handler(CommandHandler("start", start))
