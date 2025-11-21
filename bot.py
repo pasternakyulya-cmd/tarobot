@@ -2,11 +2,13 @@ import json
 import os
 import threading
 import time
+import traceback
+from datetime import date, datetime, timedelta
 
 from dotenv import load_dotenv
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
 from telegram.constants import ChatAction
-from telegram.error import BadRequest
+from telegram.error import BadRequest, TimedOut
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     ContextTypes, filters
@@ -194,7 +196,6 @@ BTN_CARD  = "🔮 Карта дня"
 BTN_MINI  = "🌗 Мини-расклад"
 BTN_COMP  = "💞 Совместимость"
 BTN_YESNO = "🌑 Задай вопрос"
-BTN_ORACLE = "🪄 Помощь Оракула"
 
 def reply_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
@@ -202,7 +203,6 @@ def reply_keyboard() -> ReplyKeyboardMarkup:
             [KeyboardButton(BTN_CARD)],
             [KeyboardButton(BTN_MINI), KeyboardButton(BTN_COMP)],
             [KeyboardButton(BTN_YESNO), KeyboardButton(BTN_UNIVERSE)],
-            [KeyboardButton(BTN_ORACLE)],
         ],
         resize_keyboard=True,
         one_time_keyboard=False,
@@ -1114,11 +1114,52 @@ async def birthday_broadcast(context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             continue
 
+async def global_error_handler(update, context):
+    """Глобальный обработчик всех ошибок"""
+    error = context.error
 
+    # Логируем детали ошибки
+    print("\n" + "="*50)
+    print("🚨 ПРОИЗОШЛА ОШИБКА")
+    print("="*50)
+
+    # Информация об update
+    if update:
+        if update.message:
+            print(f"💬 Чат: {update.message.chat_id}")
+            print(f"👤 Пользователь: {update.message.from_user.id}")
+            print(f"📝 Текст: {update.message.text}")
+        elif update.callback_query:
+            print(f"🖱 Callback от пользователя: {update.callback_query.from_user.id}")
+
+    # Типы ошибок
+    if isinstance(error, Forbidden):
+        print("❌ Пользователь заблокировал бота")
+        return  # Не логируем stack trace для этой ошибки
+
+    elif isinstance(error, BadRequest):
+        print("⚠️ Неправильный запрос к Telegram API")
+        print(f"Детали: {error}")
+
+    elif isinstance(error, TimedOut):
+        print("⏰ Таймаут запроса")
+
+    else:
+        print(f"💥 Неизвестная ошибка: {type(error).__name__}")
+        print(f"Сообщение: {error}")
+
+        # Stack trace для неизвестных ошибок
+        print("\n📋 Stack trace:")
+        print(traceback.format_exc())
+
+    print("="*50 + "\n")
 
 # ================== MAIN ==================
 def main():
     app = ApplicationBuilder().token(BOT_TOKEN_PROD).build()
+
+    # Регистрируем глобальный обработчик ошибок ПЕРВЫМ
+    app.add_error_handler(global_error_handler)
 
     # Хендлеры
     app.add_handler(CommandHandler("start", start))
@@ -1147,6 +1188,31 @@ def main():
 
     app.run_polling(allowed_updates=["message", "callback_query"])
 
+    try:
+        app.run_polling(
+            allowed_updates=["message", "callback_query"],
+            drop_pending_updates=True
+        )
+    except KeyboardInterrupt:
+        print("⏹ Остановлено пользователем")
+    except Exception as e:
+        print(f"💀 Критическая ошибка: {e}")
+        print(traceback.format_exc())
+    finally:
+        print("🔴 Бот остановлен")
 
 if __name__ == "__main__":
-    main()
+    from datetime import time, timedelta
+
+    while True:
+        try:
+            print("🚀 Запускаем бота...")
+            main()
+        except KeyboardInterrupt:
+            print("⏹ Остановлено пользователем")
+            break
+        except Exception as e:
+            print(f"💀 КРИТИЧЕСКАЯ ошибка вне хендлеров: {e}")
+            print(traceback.format_exc())
+            print("🔄 Перезапуск через 10 секунд...")
+            time.sleep(10)
