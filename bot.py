@@ -17,6 +17,12 @@ from payment.webhook_handler import flask_app
 from text_data.cards import CARDS
 from text_data.spreads import SPREADS
 from rituals import ritual_4s
+from text_data.yesno import YESNO_TEXTS
+from text_data.spreads import SPREADS          # 💞 Совместимость
+from text_data.mini_spreads import MINI_SPREADS   # 🌗 Мини-расклады
+from text_data.yesno import YESNO_TEXTS        # 🌑 Да/нет
+from text_data.spreads import SPREADS, MINI_SPREADS
+from text_data.yesno import YESNO_TEXTS
 
 load_dotenv()
 
@@ -106,10 +112,10 @@ def moscow_today_with_6am_cutoff() -> str:
 
 def get_or_assign_daily_compat(uid: str):
     """
-    Возвращает (already, payload)
-      already = False -> payload = intro (первый тап за день, не расходует)
-      already = False -> payload = новый расклад (второй тап за день, сохраняем)
-      already = True  -> payload = сохранённый расклад (сегодня уже получали)
+    Совместимость:
+      1) первый тап за день → вступление (как раньше)
+      2) все последующие тапы → каждый раз новый рандомный расклад
+      3) never already=True → чтобы не было «уже получено»
     """
     uid = str(uid)
     daily = load_daily_map() or {}
@@ -117,28 +123,26 @@ def get_or_assign_daily_compat(uid: str):
     tkey = moscow_today_with_6am_cutoff()
     comp = u.get("compat")
 
-    # Если уже есть расклад на сегодня — считаем "уже получено"
-    if comp and comp.get("date") == tkey and comp.get("text"):
-        return True, comp["text"]
+    # 💞 Первый тап за день → вступление
+    if not (isinstance(comp, dict)
+            and comp.get("date") == tkey
+            and comp.get("primed")):
 
-    # Если сегодня ещё не "праймились" — показать вступление, не выдавая расклад
-    if not (comp and comp.get("date") == tkey and comp.get("primed")):
         intro = (
             "💞 Подумай о человеке, который тебе дорог или просто не выходит из мыслей…\n"
             "Карты расскажут, как вы влияете друг на друга и что может дать ваш союз 🔮\n"
             "\n"
             "Когда будешь готов — нажми «💞 Совместимость» ещё раз 🌙"
         )
+
         u["compat"] = {"date": tkey, "primed": True}
         daily[uid] = u
         save_daily_map(daily)
+
         return False, intro
 
-    # Уже праймились сегодня, но текста ещё нет — выдаём и сохраняем расклад
-    text = random.choice(SPREADS) if globals().get("SPREADS") else "💞 Совместимость: библиотека раскладов пуста."
-    u["compat"] = {"date": tkey, "primed": True, "text": text}
-    daily[uid] = u
-    save_daily_map(daily)
+    # 💞 После вступления → КАЖДЫЙ раз новый random
+    text = random.choice(SPREADS) if SPREADS else "💞 Совместимость: библиотека раскладов пуста."
     return False, text
 
 # ===== ПРОВЕРКА ПОДПИСКИ НА КАНАЛ =====
@@ -490,7 +494,7 @@ def get_or_assign_mini_spread(uid: str):
             pass  # битая дата — выдаём новый
 
     # Берём случайный расклад
-    spreads = globals().get("MINI_SPREADS", [])
+    spreads = MINI_SPREADS
     spread_text = random.choice(spreads) if spreads else "🌗 Мини-расклад: библиотека пуста."
 
     # Сохраняем
@@ -561,7 +565,8 @@ def take_yesno_draw(uid: str):
         ), 0
 
     # 🎲 Случайный ответ (персонально подмешиваем uid и время, чтобы меньше совпадений)
-    spreads = globals().get("YESNO_TEXTS", [])
+    spreads = YESNO_TEXTS
+
     try:
         random.seed(f"{uid}-{datetime.now().isoformat(timespec='seconds')}")
 
