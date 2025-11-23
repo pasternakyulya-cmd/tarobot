@@ -193,7 +193,7 @@ BTN_CARD  = "🔮 Карта дня"
 BTN_MINI  = "🌗 Мини-расклад"
 BTN_COMP  = "💞 Совместимость"
 BTN_YESNO = "🌑 Задай вопрос"
-BTN_ORACLE = "🪄 Помощь Оракула"
+#BTN_ORACLE = "🪄 Помощь Оракула"
 
 def reply_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
