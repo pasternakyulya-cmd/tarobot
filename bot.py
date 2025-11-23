@@ -21,7 +21,8 @@ from text_data.yesno import YESNO_TEXTS
 from text_data.spreads import SPREADS          # 💞 Совместимость
 from text_data.mini_spreads import MINI_SPREADS   # 🌗 Мини-расклады
 from text_data.yesno import YESNO_TEXTS        # 🌑 Да/нет
-from text_data.spreads import SPREADS, MINI_SPREADS
+from text_data.spreads import SPREADS
+from text_data.mini_spreads import MINI_SPREADS
 from text_data.yesno import YESNO_TEXTS
 
 load_dotenv()
