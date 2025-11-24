@@ -13,7 +13,7 @@ from telegram.ext import (
 )
 from yookassa import Configuration, Payment
 
-from payment.webhook_handler import flask_app
+from payment.webhook_handler import flask_app, forward_to_n8n
 from text_data.cards import CARDS
 from text_data.spreads import SPREADS
 from rituals import ritual_4s
@@ -54,6 +54,34 @@ def load_birthdays():
 def save_birthdays(data: dict):
     with open(BIRTHDAYS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+ORACLE_FREE_FILE = "oracle_free.json"
+
+def load_oracle_free() -> dict:
+    """Кто уже использовал бесплатный вопрос Оракула."""
+    if os.path.exists(ORACLE_FREE_FILE):
+        try:
+            with open(ORACLE_FREE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            return {}
+    return {}
+def save_oracle_free(data: dict):
+    """Сохранить инфу о тех, кто уже использовал бесплатный вопрос."""
+    try:
+        with open(ORACLE_FREE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[!] Ошибка сохранения oracle_free.json: {e}")
+
+def save_oracle_free(data: dict):
+    try:
+        with open(ORACLE_FREE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"[!] Ошибка сохранения oracle_free.json: {e}")
 
 # ===== СПИСОК ПОЛЬЗОВАТЕЛЕЙ (для рассылки) =====
 USERS_FILE = "users.json"
@@ -848,8 +876,48 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     birthdays = load_birthdays()
 
     if context.user_data.get("oracle_state") == "waiting_question":
-        user_question = text
+        user_question = text.strip()
+        user_id = update.message.from_user.id
 
+        # === 1️⃣ Проверяем: использован ли уже бесплатный вопрос Оракула ===
+        free_used = load_oracle_free()
+
+        if str(user_id) not in free_used:
+            # Первый вопрос — бесплатный
+            free_used[str(user_id)] = True
+            save_oracle_free(free_used)
+
+            await update.message.reply_text(
+                "✨ Твой первый вопрос к Оракулу — полностью бесплатный.\n\n"
+                "Оракул уже приступил к разбору твоей ситуации.\n"
+                "Ответ придёт в этот чат сразу после завершения разбора 💫"
+            )
+
+            # Собираем фейковый вебхук, как будто ЮKassa прислала payment.succeeded
+            fake_event = {
+                "event": "payment.succeeded",
+                "object": {
+                    "status": "succeeded",
+                    "metadata": {
+                        "user_id": user_id,
+                        "question": user_question,
+                        "tariff": "free"
+                    }
+                }
+            }
+
+            try:
+                print(f"[ORACLE] Бесплатный вопрос → отправляю в n8n: user_id={user_id}")
+                forward_to_n8n(fake_event)
+            except Exception as e:
+                print(f"[ORACLE][!] Ошибка отправки в n8n для бесплатного вопроса: {e}")
+
+            # сбрасываем состояние
+            context.user_data["oracle_state"] = None
+            context.user_data["oracle_question"] = user_question
+            return
+
+        # === 2️⃣ Бесплатка уже использована — дальше только платно, как раньше ===
         payment_msg = (
             "Оракул услышал твой вопрос.\n\n"
             "Чтобы получить действительно точный, глубокий и индивидуальный разбор, нужен энергообмен. "
@@ -863,8 +931,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         import uuid
-
-        user_id = update.message.from_user.id
 
         # Генерируем платежные ссылки с UUID для каждого варианта
         payment_100 = Payment.create({
@@ -880,7 +946,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "description": "Разбор вопроса Оракулом (1 обращение)",
             "metadata": {
                 "user_id": user_id,
-                "question": user_question,  # ← теперь user_question доступен
+                "question": user_question,
                 "tariff": "single"
             }
         }, uuid.uuid4())
@@ -898,7 +964,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "description": "Пакет 6 обращений к Оракулу",
             "metadata": {
                 "user_id": user_id,
-                "question": user_question,  # ← теперь user_question доступен
+                "question": user_question,
                 "tariff": "package"
             }
         }, uuid.uuid4())
@@ -914,7 +980,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        print(f"🔄 Отправляю сообщение с кнопками-ссылками:")
+        print("🔄 Отправляю сообщение с кнопками-ссылками:")
         print(f"   Кнопка 100 руб: {payment_100.confirmation.confirmation_url}")
         print(f"   Кнопка 130 руб: {payment_130.confirmation.confirmation_url}")
 
@@ -924,6 +990,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["oracle_question"] = user_question
         context.user_data["oracle_state"] = "waiting_payment"
         return
+
 
     # 2️⃣ Нажатие на кнопку «🪄 Помощь Оракула»
     if t == BTN_ORACLE.lower() or ("помощь" in t and "оракула" in t):
