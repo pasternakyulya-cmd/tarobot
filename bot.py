@@ -874,6 +874,50 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = text.lower()  # добавляем для удобства
     uid = str(update.effective_user.id)
     birthdays = load_birthdays()
+    # 🔮 Человек пишет ПОВТОРНЫЙ вопрос после бесплатного ответа
+    if context.user_data.get("oracle_state") == "after_free":
+        user_question = text.strip()
+        user_id = update.message.from_user.id
+
+        # Перекидываем пользователя в платный сценарий
+        context.user_data["oracle_state"] = "waiting_question"
+        context.user_data["oracle_question"] = user_question
+
+        # Отправляем ему платное сообщение (старое, готовое)
+        payment_msg = (
+            "Оракул услышал твой вопрос.\n\n"
+            "Чтобы получить действительно точный, глубокий и индивидуальный разбор, нужен энергообмен. "
+            "Это не формальность — благодаря ему Оракул может сосредоточиться на твоей ситуации и разобрать её максимально внимательно.\n\n"
+            "✨ Стоимость одного обращения — 100 рублей.\n"
+            "Это небольшая сумма за ответ, который может дать ясность, подсказать верное действие, предупредить ошибку "
+            "и помочь увидеть то, что сейчас кажется туманным.\n\n"
+            "Если ты хочешь получить разбор, в котором чувствуется внимание, опыт и аккуратный подход — просто нажми на кнопку ниже.\n"
+            "Оракул приступит к разбору сразу после энергообмена 💫"
+        )
+
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        import uuid
+
+        payment_100 = Payment.create({
+            "amount": {"value": "100.00", "currency": "RUB"},
+            "confirmation": {
+                "type": "redirect",
+                "return_url": BOT_URL_PROD
+            },
+            "capture": True,
+            "description": "Разбор вопроса Оракулом (1 обращение)",
+            "metadata": {
+                "user_id": user_id,
+                "question": user_question,
+                "tariff": "single"
+            }
+        }, uuid.uuid4())
+
+        keyboard = [[InlineKeyboardButton("🔮 Оплатить 100 ₽", url=payment_100.confirmation.confirmation_url)]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(payment_msg, reply_markup=reply_markup)
+        return
 
     if context.user_data.get("oracle_state") == "waiting_question":
         user_question = text.strip()
@@ -912,9 +956,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception as e:
                 print(f"[ORACLE][!] Ошибка отправки в n8n для бесплатного вопроса: {e}")
 
-            # сбрасываем состояние
-            context.user_data["oracle_state"] = None
-            context.user_data["oracle_question"] = user_question
+            # После бесплатного ответа — предлагаем уточнить
+            context.user_data["oracle_state"] = "after_free"
+            context.user_data["oracle_question"] = None
+
+            await update.message.reply_text(
+                "✨ Оракул поделился разбором.\n"
+                "Если хочешь уточнить что-то ещё — просто напиши свой следующий вопрос.\n\n"
+                "Дополнительные вопросы доступны после энергообмена 💫"
+            )
             return
 
         # === 2️⃣ Бесплатка уже использована — дальше только платно, как раньше ===
