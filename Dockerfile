@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Копируем зависимости
-RUN pip install --no-cache-dir "python-telegram-bot[job-queue]"
+RUN pip install --no-cache-dir "python-telegram-bot[job-queue]" yookassa flask dotenv
 
 # Копируем код приложения
 COPY . .
