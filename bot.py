@@ -867,7 +867,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await chat.send_message(INTRO_UNIVERSE, reply_markup=reply_keyboard())
         return
 
-    # Сохраняем пользователя для рассылки
+    # Сохраняем пользователя для рассылки рр
     uid = str(update.effective_user.id)
     add_user(uid)
     text = update.message.text.strip()
