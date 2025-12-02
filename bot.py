@@ -874,7 +874,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = text.lower()  # добавляем для удобства
     uid = str(update.effective_user.id)
     birthdays = load_birthdays()
-    # 🔮 Человек пишет ПОВТОРНЫЙ вопрос после бесплатного ответа
+    # 🔮 Человек пишет ПОВТОРНЫЙ вопрос после бесплатного ответа /
     if context.user_data.get("oracle_state") == "after_free":
         user_question = text.strip()
         user_id = update.message.from_user.id
