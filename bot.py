@@ -889,7 +889,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
             "Чтобы сделать по-настоящему глубокий и индивидуальный разбор, нужен энергообмен — это помогает сосредоточиться именно на твоей ситуации.\n\n"
 
-            "✨ Стоимость одного разбора — 100 рублей.\n\n"
+            "✨ Стоимость одного разбора — ~~100₽~~ **49₽**.\n\n"
 
             "За эти деньги ты получишь не просто ответ, а ясность и направление: что делать дальше, на что обратить внимание и как избежать ошибок.\n\n"
 
@@ -899,8 +899,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
         import uuid
 
-        payment_100 = Payment.create({
-            "amount": {"value": "100.00", "currency": "RUB"},
+        payment_49 = Payment.create({
+            "amount": {"value": "49.00", "currency": "RUB"},
             "confirmation": {
                 "type": "redirect",
                 "return_url": BOT_URL_PROD
@@ -914,7 +914,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             }
         }, uuid.uuid4())
 
-        keyboard = [[InlineKeyboardButton("🔮 Оплатить 100 ₽", url=payment_100.confirmation.confirmation_url)]]
+        keyboard = [[InlineKeyboardButton("🔮 ~~100₽~~ **49₽**", url=payment_49.confirmation.confirmation_url)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         await update.message.reply_text(payment_msg, reply_markup=reply_markup)
@@ -969,7 +969,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Оракул услышал твой вопрос.\n\n"
             "Чтобы получить действительно точный, глубокий и индивидуальный разбор, нужен энергообмен. "
             "Это не формальность — благодаря ему Оракул может сосредоточиться на твоей ситуации и разобрать её максимально внимательно.\n\n"
-            "✨ Стоимость одного обращения — 100 рублей.\n"
+            "✨ Стоимость одного обращения — ~~100₽~~ **49₽** рублей.\n"
             "Это небольшая сумма за ответ, который может дать ясность, подсказать верное действие, предупредить ошибку "
             "и помочь увидеть то, что сейчас кажется туманным.\n\n"
             "Если ты хочешь получить разбор, в котором чувствуется внимание, опыт и аккуратный подход — просто нажми на кнопку ниже.\n"
@@ -980,9 +980,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         import uuid
 
         # Генерируем платежные ссылки с UUID для каждого варианта
-        payment_100 = Payment.create({
+        payment_49 = Payment.create({
             "amount": {
-                "value": "100.00",
+                "value": "49.00",
                 "currency": "RUB"
             },
             "confirmation": {
@@ -1018,7 +1018,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         keyboard = [
             [
-                InlineKeyboardButton("🔮 Оплатить 100 ₽", url=payment_100.confirmation.confirmation_url),
+                InlineKeyboardButton("🔮 Оплатить ~~100₽~~ **49₽**", url=payment_49.confirmation.confirmation_url),
             ]
             # [
             #     InlineKeyboardButton("🔮 Пакет 6 обращений — 130 ₽", url=payment_130.confirmation.confirmation_url),
@@ -1028,7 +1028,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         print("🔄 Отправляю сообщение с кнопками-ссылками:")
-        print(f"   Кнопка 100 руб: {payment_100.confirmation.confirmation_url}")
+        print(f"   Кнопка 49 руб: {payment_49.confirmation.confirmation_url}")
         print(f"   Кнопка 130 руб: {payment_130.confirmation.confirmation_url}")
 
         sent_message = await update.message.reply_text(payment_msg, reply_markup=reply_markup)
