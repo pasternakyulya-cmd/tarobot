@@ -19,7 +19,6 @@ docker run -p 5000:5000 -d --name my-app-container my-app
 
 9. Чтобы проверить, что ошибок нет, вводишь
 
-docker logs my-app-container
 
 Если после enter ничего не выводит - все работает!
 

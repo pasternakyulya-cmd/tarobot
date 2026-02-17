@@ -3073,7 +3073,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ================== УТРЕННЯЯ РАССЫЛКА ==================
 MORNING_TEXT = (
     "Карта дня уже ждет тебя.\n"
-    "За персональным расладом обращайтесь:@pasternakyou✨"
+    "Открой и посмотри знак на сегодня ✨"
 )
 
 
